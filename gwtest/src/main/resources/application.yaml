@@ -1,18 +1,26 @@
 server:
   port: 8080  # Gateway 포트
+
 logging:
   level:
     org.springframework.cloud.gateway: DEBUG
     org.springframework.web.reactive: DEBUG
+
 spring:
   cloud:
     gateway:
-      server:
-        webflux:
-          routes:
-            - id: forward-to-web
-              uri: http://localhost:8081
-              predicates:
-                - Path=/app/**
-              filters:
-                - RewritePath=/app/(?<path>.*), /$\{path}
+      routes:
+        - id: secure-route
+          uri: http://localhost:8081
+          predicates:
+            - Path=/secure/**
+          filters:
+            - name: AuthFilter
+            - RewritePath=/secure/(?<path>.*), /${path}
+
+        - id: forward-to-web
+          uri: http://localhost:8081
+          predicates:
+            - Path=/app/**
+          filters:
+            - RewritePath=/app/(?<path>.*), /${path}
