@@ -9,6 +9,8 @@ import org.springframework.web.bind.annotation.*
 import shb.gpark.productservice.dto.*
 import shb.gpark.productservice.service.ProductService
 import java.math.BigDecimal
+import org.springframework.web.bind.annotation.RequestParam
+import org.springframework.data.domain.Sort
 
 @RestController
 @RequestMapping("/api/products")
@@ -73,22 +75,15 @@ class ProductController(
         ))
     }
     
-    @GetMapping("/search")
-    @Operation(summary = "상품 검색", description = "다양한 조건으로 상품을 검색합니다.")
+    @GetMapping("/api/products")
     fun searchProducts(
-        @Parameter(description = "상품명") @RequestParam(required = false) name: String?,
-        @Parameter(description = "카테고리") @RequestParam(required = false) category: String?,
-        @Parameter(description = "최소 가격") @RequestParam(required = false) minPrice: BigDecimal?,
-        @Parameter(description = "최대 가격") @RequestParam(required = false) maxPrice: BigDecimal?,
-        @Parameter(description = "활성 상태") @RequestParam(required = false, defaultValue = "true") isActive: Boolean?
-    ): ResponseEntity<ApiResponse<List<ProductResponse>>> {
-        val request = ProductSearchRequest(name, category, minPrice, maxPrice, isActive)
-        val products = productService.searchProducts(request)
-        return ResponseEntity.ok(ApiResponse(
-            success = true,
-            message = "검색 결과를 성공적으로 조회했습니다.",
-            data = products
-        ))
+        @RequestParam(required = false) name: String?,
+        @RequestParam(required = false) minPrice: BigDecimal?,
+        @RequestParam(required = false) maxPrice: BigDecimal?,
+        @RequestParam(required = false) minStock: Int?,
+        @RequestParam(required = false, defaultValue = "id,asc") sort: String
+    ): List<ProductResponse> {
+        return productService.searchProducts(name, minPrice, maxPrice, minStock, sort)
     }
     
     @GetMapping("/category/{category}")

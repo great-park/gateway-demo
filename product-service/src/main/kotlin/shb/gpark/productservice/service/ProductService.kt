@@ -98,16 +98,28 @@ class ProductService(
         return savedProduct.toResponse()
     }
     
-    @Transactional(readOnly = true)
-    fun searchProducts(request: ProductSearchRequest): List<ProductResponse> {
-        val products = productRepository.searchProducts(
-            name = request.name,
-            category = request.category,
-            minPrice = request.minPrice,
-            maxPrice = request.maxPrice,
-            isActive = request.isActive
-        )
-        return products.map { it.toResponse() }
+    fun searchProducts(name: String?, minPrice: BigDecimal?, maxPrice: BigDecimal?, minStock: Int?, sort: String): List<ProductResponse> {
+        val all = productRepository.findAll().filter {
+            (name == null || it.name.contains(name, ignoreCase = true)) &&
+            (minPrice == null || it.price >= minPrice) &&
+            (maxPrice == null || it.price <= maxPrice) &&
+            (minStock == null || it.stock >= minStock)
+        }
+        val sorted = when(sort) {
+            "price,asc" -> all.sortedBy { it.price }
+            "price,desc" -> all.sortedByDescending { it.price }
+            "stock,asc" -> all.sortedBy { it.stock }
+            "stock,desc" -> all.sortedByDescending { it.stock }
+            else -> all.sortedBy { it.id }
+        }
+        return sorted.map {
+            ProductResponse(
+                id = it.id,
+                name = it.name,
+                price = it.price,
+                stock = it.stock
+            )
+        }
     }
     
     @Transactional(readOnly = true)

@@ -56,8 +56,15 @@ class OrderService(
     }
 
     fun getOrder(orderId: Long): OrderResponse {
-        val order = orderRepository.findById(orderId).orElseThrow { IllegalArgumentException("주문을 찾을 수 없습니다") }
-        return order.toOrderResponse()
+        val order = orderRepository.findById(orderId).orElseThrow { RuntimeException("존재하지 않는 주문입니다.") }
+        return toOrderResponse(order)
+    }
+
+    // 결제/알림 연동을 위한 주문 생성 이벤트 설계 예시
+    data class OrderCreatedEvent(val orderId: Long, val userId: Long, val totalAmount: BigDecimal)
+    fun publishOrderCreatedEvent(order: Order) {
+        // 실제 이벤트 발행 로직은 메시지 브로커, 이벤트 버스 등과 연동 예정
+        // 예시: eventPublisher.publish(OrderCreatedEvent(order.id, order.userId, order.totalAmount))
     }
 
     fun getOrdersByUser(userId: Long): List<OrderSummaryResponse> {

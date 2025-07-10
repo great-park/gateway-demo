@@ -14,6 +14,7 @@ import org.springframework.data.domain.Pageable
 import org.springframework.data.web.PageableDefault
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.data.domain.Page
+import org.springframework.web.bind.annotation.GetMapping
 
 @RestController
 @RequestMapping("/api/orders")
@@ -31,6 +32,9 @@ class OrderController(
         val response = orderService.getOrder(orderId)
         return ResponseEntity.ok(response)
     }
+
+    @GetMapping("/api/orders/{orderId}")
+    fun getOrderDetail(@PathVariable orderId: Long) = orderService.getOrder(orderId)
 
     @GetMapping("/user/{userId}")
     fun getOrdersByUser(@PathVariable userId: Long): ResponseEntity<List<OrderSummaryResponse>> {

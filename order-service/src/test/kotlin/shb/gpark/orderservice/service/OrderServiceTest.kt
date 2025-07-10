@@ -62,4 +62,28 @@ class OrderServiceTest {
         }
         assertTrue(exception.message!!.contains("존재하지 않는 주문"))
     }
+
+    @Test
+    fun `주문 상세 조회 성공`() {
+        // given
+        val orderId = 1L
+        val order = Order(
+            id = orderId,
+            userId = 1L,
+            totalAmount = BigDecimal.TEN,
+            status = shb.gpark.orderservice.entity.OrderStatus.PENDING,
+            orderDate = java.time.LocalDateTime.now(),
+            updatedAt = java.time.LocalDateTime.now(),
+            notes = "상세 테스트"
+        )
+        `when`(orderRepository.findById(orderId)).thenReturn(java.util.Optional.of(order))
+
+        // when
+        val result = orderService.getOrder(orderId)
+
+        // then
+        assertNotNull(result)
+        assertEquals(orderId, result.id)
+        assertEquals(order.userId, result.userId)
+    }
 } 
