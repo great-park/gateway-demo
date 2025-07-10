@@ -62,11 +62,12 @@ class OrderService(
     }
 
     @Transactional
-    fun updateOrderStatus(orderId: Long, status: OrderStatus): OrderResponse {
-        val order = orderRepository.findById(orderId).orElseThrow { IllegalArgumentException("주문을 찾을 수 없습니다") }
-        val updated = order.copy(status = status, updatedAt = LocalDateTime.now())
-        val saved = orderRepository.save(updated)
-        return saved.toOrderResponse()
+    fun updateOrderStatus(orderId: Long, request: UpdateOrderStatusRequest): OrderResponse {
+        val order = orderRepository.findById(orderId).orElseThrow { RuntimeException("존재하지 않는 주문입니다.") }
+        order.status = request.status
+        order.updatedAt = java.time.LocalDateTime.now()
+        val saved = orderRepository.save(order)
+        return toOrderResponse(saved)
     }
 
     private fun Order.toOrderResponse(): OrderResponse {

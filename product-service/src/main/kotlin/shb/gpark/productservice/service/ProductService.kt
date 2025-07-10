@@ -8,40 +8,28 @@ import shb.gpark.productservice.exception.*
 import shb.gpark.productservice.repository.ProductRepository
 import java.math.BigDecimal
 import java.time.LocalDateTime
+import shb.gpark.productservice.dto.ProductCreateRequest
+import shb.gpark.productservice.dto.ProductResponse
+import shb.gpark.productservice.model.Product
 
 @Service
-@Transactional
 class ProductService(
     private val productRepository: ProductRepository
 ) {
     
-    fun createProduct(request: CreateProductRequest): ProductResponse {
-        // 중복 상품명 검사
-        if (productRepository.findByNameContainingIgnoreCase(request.name).isNotEmpty()) {
-            throw ProductAlreadyExistsException(request.name)
-        }
-        
-        // 가격 검증
-        if (request.price <= BigDecimal.ZERO) {
-            throw InvalidPriceException(request.price.toString())
-        }
-        
-        // 재고 검증
-        if (request.stock < 0) {
-            throw InvalidStockException(request.stock)
-        }
-        
+    fun createProduct(request: ProductCreateRequest): ProductResponse {
         val product = Product(
             name = request.name,
-            description = request.description,
             price = request.price,
-            stock = request.stock,
-            category = request.category,
-            imageUrl = request.imageUrl
+            stock = request.stock
         )
-        
-        val savedProduct = productRepository.save(product)
-        return savedProduct.toResponse()
+        val saved = productRepository.save(product)
+        return ProductResponse(
+            id = saved.id,
+            name = saved.name,
+            price = saved.price,
+            stock = saved.stock
+        )
     }
     
     @Transactional(readOnly = true)
@@ -80,12 +68,8 @@ class ProductService(
         
         val updatedProduct = product.copy(
             name = request.name ?: product.name,
-            description = request.description ?: product.description,
             price = request.price ?: product.price,
             stock = request.stock ?: product.stock,
-            category = request.category ?: product.category,
-            imageUrl = request.imageUrl ?: product.imageUrl,
-            isActive = request.isActive ?: product.isActive,
             updatedAt = LocalDateTime.now()
         )
         
@@ -187,13 +171,8 @@ class ProductService(
         return ProductResponse(
             id = this.id!!,
             name = this.name,
-            description = this.description,
             price = this.price,
             stock = this.stock,
-            category = this.category,
-            imageUrl = this.imageUrl,
-            isActive = this.isActive,
-            createdAt = this.createdAt,
             updatedAt = this.updatedAt
         )
     }

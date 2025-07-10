@@ -84,3 +84,16 @@ data class ApiResponse<T>(
     val data: T? = null,
     val timestamp: LocalDateTime = LocalDateTime.now()
 ) 
+
+data class ProductCreateRequest(
+    val name: String,
+    val price: BigDecimal,
+    val stock: Int
+)
+
+data class ProductResponse(
+    val id: Long,
+    val name: String,
+    val price: BigDecimal,
+    val stock: Int
+) 

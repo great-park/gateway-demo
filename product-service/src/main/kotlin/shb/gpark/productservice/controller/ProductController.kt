@@ -17,16 +17,10 @@ class ProductController(
     private val productService: ProductService
 ) {
     
-    @PostMapping
-    @Operation(summary = "상품 생성", description = "새로운 상품을 생성합니다.")
-    fun createProduct(@RequestBody request: CreateProductRequest): ResponseEntity<ApiResponse<ProductResponse>> {
+    @PostMapping("/api/products")
+    fun createProduct(@RequestBody request: ProductCreateRequest): ResponseEntity<ProductResponse> {
         val product = productService.createProduct(request)
-        return ResponseEntity.status(HttpStatus.CREATED)
-            .body(ApiResponse(
-                success = true,
-                message = "상품이 성공적으로 생성되었습니다.",
-                data = product
-            ))
+        return ResponseEntity.ok(product)
     }
     
     @GetMapping

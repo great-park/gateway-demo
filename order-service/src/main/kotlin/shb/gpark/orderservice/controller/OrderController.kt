@@ -6,6 +6,10 @@ import org.springframework.web.bind.annotation.*
 import shb.gpark.orderservice.dto.*
 import shb.gpark.orderservice.entity.OrderStatus
 import shb.gpark.orderservice.service.OrderService
+import org.springframework.web.bind.annotation.PatchMapping
+import org.springframework.web.bind.annotation.PathVariable
+import org.springframework.web.bind.annotation.RequestBody
+import shb.gpark.orderservice.dto.UpdateOrderStatusRequest
 
 @RestController
 @RequestMapping("/api/orders")
@@ -30,12 +34,9 @@ class OrderController(
         return ResponseEntity.ok(response)
     }
 
-    @PutMapping("/{orderId}/status")
+    @PatchMapping("/api/orders/{orderId}/status")
     fun updateOrderStatus(
         @PathVariable orderId: Long,
-        @Valid @RequestBody request: UpdateOrderStatusRequest
-    ): ResponseEntity<OrderResponse> {
-        val response = orderService.updateOrderStatus(orderId, request.status)
-        return ResponseEntity.ok(response)
-    }
+        @RequestBody request: UpdateOrderStatusRequest
+    ) = orderService.updateOrderStatus(orderId, request)
 } 
