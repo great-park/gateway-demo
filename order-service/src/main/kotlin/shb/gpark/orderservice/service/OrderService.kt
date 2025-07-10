@@ -7,6 +7,9 @@ import shb.gpark.orderservice.entity.Order
 import shb.gpark.orderservice.entity.OrderItem
 import shb.gpark.orderservice.entity.OrderStatus
 import shb.gpark.orderservice.repository.OrderRepository
+import org.springframework.data.domain.Page
+import org.springframework.data.domain.Pageable
+import org.springframework.data.domain.PageImpl
 import java.math.BigDecimal
 import java.time.LocalDateTime
 
@@ -61,6 +64,19 @@ class OrderService(
         return orderRepository.findByUserId(userId).map { it.toOrderSummaryResponse() }
     }
 
+    fun searchOrders(userId: Long?, status: String?, from: String?, to: String?, pageable: Pageable): Page<OrderResponse> {
+        val all = orderRepository.findAll()
+            .filter { (userId == null || it.userId == userId) &&
+                      (status == null || it.status.name == status) &&
+                      (from == null || it.orderDate.isAfter(LocalDateTime.parse(from))) &&
+                      (to == null || it.orderDate.isBefore(LocalDateTime.parse(to))) }
+            .map { toOrderResponse(it) }
+        val start = pageable.offset.toInt()
+        val end = (start + pageable.pageSize).coerceAtMost(all.size)
+        val content = if (start <= end) all.subList(start, end) else emptyList()
+        return PageImpl(content, pageable, all.size.toLong())
+    }
+
     @Transactional
     fun updateOrderStatus(orderId: Long, request: UpdateOrderStatusRequest): OrderResponse {
         val order = orderRepository.findById(orderId).orElseThrow { RuntimeException("존재하지 않는 주문입니다.") }
@@ -70,16 +86,25 @@ class OrderService(
         return toOrderResponse(saved)
     }
 
-    private fun Order.toOrderResponse(): OrderResponse {
+    fun toOrderResponse(order: Order): OrderResponse {
         return OrderResponse(
-            id = this.id!!,
-            userId = this.userId,
-            status = this.status,
-            totalAmount = this.totalAmount,
-            orderDate = this.orderDate,
-            updatedAt = this.updatedAt,
-            items = this.orderItems.map { it.toOrderItemResponse() },
-            notes = this.notes
+            id = order.id,
+            userId = order.userId,
+            status = order.status,
+            totalAmount = order.totalAmount,
+            orderDate = order.orderDate,
+            updatedAt = order.updatedAt,
+            items = order.orderItems.map {
+                OrderItemResponse(
+                    id = it.id,
+                    productId = it.productId,
+                    productName = it.productName,
+                    quantity = it.quantity,
+                    unitPrice = it.unitPrice,
+                    totalPrice = it.totalPrice
+                )
+            },
+            notes = order.notes
         )
     }
     private fun OrderItem.toOrderItemResponse(): OrderItemResponse {

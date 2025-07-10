@@ -47,30 +47,16 @@ class ProductController(
         ))
     }
     
-    @PutMapping("/{id}")
-    @Operation(summary = "상품 수정", description = "기존 상품 정보를 수정합니다.")
-    fun updateProduct(
-        @Parameter(description = "상품 ID") @PathVariable id: Long,
-        @RequestBody request: UpdateProductRequest
-    ): ResponseEntity<ApiResponse<ProductResponse>> {
+    @PutMapping("/api/products/{id}")
+    fun updateProduct(@PathVariable id: Long, @RequestBody request: ProductCreateRequest): ResponseEntity<ProductResponse> {
         val product = productService.updateProduct(id, request)
-        return ResponseEntity.ok(ApiResponse(
-            success = true,
-            message = "상품이 성공적으로 수정되었습니다.",
-            data = product
-        ))
+        return ResponseEntity.ok(product)
     }
-    
-    @DeleteMapping("/{id}")
-    @Operation(summary = "상품 삭제", description = "상품을 삭제합니다.")
-    fun deleteProduct(
-        @Parameter(description = "상품 ID") @PathVariable id: Long
-    ): ResponseEntity<ApiResponse<Unit>> {
+
+    @DeleteMapping("/api/products/{id}")
+    fun deleteProduct(@PathVariable id: Long): ResponseEntity<Void> {
         productService.deleteProduct(id)
-        return ResponseEntity.ok(ApiResponse(
-            success = true,
-            message = "상품이 성공적으로 삭제되었습니다."
-        ))
+        return ResponseEntity.noContent().build()
     }
     
     @PutMapping("/{id}/stock")

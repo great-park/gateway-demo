@@ -10,6 +10,10 @@ import org.springframework.web.bind.annotation.PatchMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.RequestBody
 import shb.gpark.orderservice.dto.UpdateOrderStatusRequest
+import org.springframework.data.domain.Pageable
+import org.springframework.data.web.PageableDefault
+import org.springframework.web.bind.annotation.RequestParam
+import org.springframework.data.domain.Page
 
 @RestController
 @RequestMapping("/api/orders")
@@ -33,6 +37,15 @@ class OrderController(
         val response = orderService.getOrdersByUser(userId)
         return ResponseEntity.ok(response)
     }
+
+    @GetMapping("/api/orders")
+    fun searchOrders(
+        @RequestParam(required = false) userId: Long?,
+        @RequestParam(required = false) status: String?,
+        @RequestParam(required = false) from: String?,
+        @RequestParam(required = false) to: String?,
+        @PageableDefault(size = 10) pageable: Pageable
+    ) = orderService.searchOrders(userId, status, from, to, pageable)
 
     @PatchMapping("/api/orders/{orderId}/status")
     fun updateOrderStatus(

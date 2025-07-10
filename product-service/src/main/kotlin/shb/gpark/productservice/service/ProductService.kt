@@ -44,44 +44,23 @@ class ProductService(
         return product.toResponse()
     }
     
-    fun updateProduct(id: Long, request: UpdateProductRequest): ProductResponse {
-        val product = productRepository.findById(id)
-            .orElseThrow { ProductNotFoundException(id) }
-        
-        // 상품명 변경 시 중복 검사
-        if (request.name != null && request.name != product.name) {
-            val existingProducts = productRepository.findByNameContainingIgnoreCase(request.name)
-            if (existingProducts.isNotEmpty()) {
-                throw ProductAlreadyExistsException(request.name)
-            }
-        }
-        
-        // 가격 검증
-        if (request.price != null && request.price <= BigDecimal.ZERO) {
-            throw InvalidPriceException(request.price.toString())
-        }
-        
-        // 재고 검증
-        if (request.stock != null && request.stock < 0) {
-            throw InvalidStockException(request.stock)
-        }
-        
-        val updatedProduct = product.copy(
-            name = request.name ?: product.name,
-            price = request.price ?: product.price,
-            stock = request.stock ?: product.stock,
-            updatedAt = LocalDateTime.now()
+    fun updateProduct(id: Long, request: ProductCreateRequest): ProductResponse {
+        val product = productRepository.findById(id).orElseThrow { RuntimeException("존재하지 않는 상품입니다.") }
+        product.name = request.name
+        product.price = request.price
+        product.stock = request.stock
+        val saved = productRepository.save(product)
+        return ProductResponse(
+            id = saved.id,
+            name = saved.name,
+            price = saved.price,
+            stock = saved.stock
         )
-        
-        val savedProduct = productRepository.save(updatedProduct)
-        return savedProduct.toResponse()
     }
     
     fun deleteProduct(id: Long) {
-        val product = productRepository.findById(id)
-            .orElseThrow { ProductNotFoundException(id) }
-        
-        productRepository.delete(product)
+        if (!productRepository.existsById(id)) throw RuntimeException("존재하지 않는 상품입니다.")
+        productRepository.deleteById(id)
     }
     
     fun updateStock(id: Long, request: ProductStockUpdateRequest): ProductResponse {
