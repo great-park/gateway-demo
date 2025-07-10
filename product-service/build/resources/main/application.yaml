@@ -4,14 +4,18 @@ server:
 spring:
   application:
     name: product-service
+  
   datasource:
-    url: jdbc:h2:mem:testdb
+    url: jdbc:h2:mem:productdb
     driver-class-name: org.h2.Driver
-    username: SA
+    username: sa
     password: 
+  
   h2:
     console:
       enabled: true
+      path: /h2-console
+  
   jpa:
     hibernate:
       ddl-auto: create-drop
@@ -19,9 +23,47 @@ spring:
     properties:
       hibernate:
         format_sql: true
-  profiles:
-    active: docker
+        dialect: org.hibernate.dialect.H2Dialect
+  
+  jackson:
+    default-property-inclusion: non_null
+    serialization:
+      write-dates-as-timestamps: false
 
+# Actuator 설정
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: always
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+
+# Swagger/OpenAPI 설정
+springdoc:
+  api-docs:
+    path: /api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    tags-sorter: alpha
+    operations-sorter: alpha
+  info:
+    title: Product Service API
+    description: 상품 관리 서비스 API 문서
+    version: 1.0.0
+    contact:
+      name: Development Team
+      email: dev@example.com
+
+# 로깅 설정
 logging:
   level:
-    shb.gpark.productservice: DEBUG 
+    shb.gpark.productservice: DEBUG
+    org.springframework.web: DEBUG
+    org.hibernate.SQL: DEBUG
+    org.hibernate.type.descriptor.sql.BasicBinder: TRACE 
