@@ -11,6 +11,9 @@ import shb.gpark.productservice.service.ProductService
 import java.math.BigDecimal
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.data.domain.Sort
+import shb.gpark.productservice.dto.CreateReviewRequest
+import shb.gpark.productservice.dto.ReviewResponse
+import shb.gpark.productservice.dto.ProductDetailResponse
 
 @RestController
 @RequestMapping("/api/products")
@@ -150,12 +153,6 @@ class ProductController(
         ))
     }
 
-    @GetMapping("/api/products/{id}")
-    fun getProductDetail(@PathVariable id: Long): ResponseEntity<ProductResponse> {
-        val product = productService.getProduct(id)
-        return ResponseEntity.ok(product)
-    }
-
     @PostMapping("/api/products/{id}/restock")
     fun restockProduct(@PathVariable id: Long, @RequestParam amount: Int): ResponseEntity<ProductResponse> {
         val product = productService.restockProduct(id, amount)
@@ -171,6 +168,21 @@ class ProductController(
     @PostMapping("/api/products/{id}/deactivate")
     fun deactivateProduct(@PathVariable id: Long): ResponseEntity<ProductResponse> {
         val product = productService.setProductActive(id, false)
+        return ResponseEntity.ok(product)
+    }
+
+    @PostMapping("/api/products/{productId}/reviews")
+    fun createReview(
+        @PathVariable productId: Long,
+        @RequestBody request: CreateReviewRequest
+    ): ResponseEntity<ReviewResponse> {
+        val review = productService.createReview(productId, request)
+        return ResponseEntity.ok(review)
+    }
+
+    @GetMapping("/api/products/{productId}/detail")
+    fun getProductDetail(@PathVariable productId: Long): ResponseEntity<ProductDetailResponse> {
+        val product = productService.getProductDetail(productId)
         return ResponseEntity.ok(product)
     }
 } 

@@ -12,6 +12,10 @@ import org.springframework.data.domain.Pageable
 import org.springframework.data.domain.PageImpl
 import java.math.BigDecimal
 import java.time.LocalDateTime
+import shb.gpark.orderservice.service.PaymentClient
+import shb.gpark.orderservice.service.NotificationClient
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
 
 interface PaymentService {
     fun processPayment(orderId: Long, amount: BigDecimal): Boolean
@@ -39,8 +43,8 @@ class MockNotificationService : NotificationService {
 class OrderService(
     private val orderRepository: OrderRepository,
     private val productServiceClient: ProductServiceClient,
-    private val paymentService: PaymentService = MockPaymentService(),
-    private val notificationService: NotificationService = MockNotificationService()
+    private val paymentClient: PaymentClient,
+    private val notificationClient: NotificationClient
 ) {
     @Transactional
     fun createOrder(request: CreateOrderRequest): OrderResponse {
@@ -120,21 +124,57 @@ class OrderService(
     fun confirmOrder(orderId: Long): OrderResponse {
         val order = orderRepository.findById(orderId).orElseThrow { RuntimeException("존재하지 않는 주문입니다.") }
         if (order.status != OrderStatus.PENDING) throw RuntimeException("이미 처리된 주문입니다.")
-        val paymentResult = paymentService.processPayment(order.id, order.totalAmount)
-        if (!paymentResult) throw RuntimeException("결제 실패")
+        
+        // 실제 결제 서비스 호출
+        val paymentResponse = paymentClient.processPayment(
+            PaymentRequest(
+                orderId = order.id,
+                userId = order.userId,
+                amount = order.totalAmount,
+                description = "주문 결제"
+            )
+        )
+        if (!paymentResponse.success) throw RuntimeException("결제 실패: ${paymentResponse.message}")
+        
         order.status = OrderStatus.CONFIRMED
         order.updatedAt = java.time.LocalDateTime.now()
         val saved = orderRepository.save(order)
-        notificationService.sendOrderNotification(order.id, order.userId, "주문이 확정되었습니다.")
+        
+        // 실제 알림 서비스 호출 (비동기)
+        GlobalScope.launch {
+            try {
+                notificationClient.sendEmailNotification(
+                    order.userId,
+                    "주문 확정",
+                    "주문이 성공적으로 확정되었습니다. 주문번호: ${order.id}"
+                )
+            } catch (e: Exception) {
+                println("알림 발송 실패: ${e.message}")
+            }
+        }
+        
         return toOrderResponse(saved)
     }
     fun cancelOrder(orderId: Long): OrderResponse {
         val order = orderRepository.findById(orderId).orElseThrow { RuntimeException("존재하지 않는 주문입니다.") }
         if (order.status == OrderStatus.CANCELLED) throw RuntimeException("이미 취소된 주문입니다.")
+        
         order.status = OrderStatus.CANCELLED
         order.updatedAt = java.time.LocalDateTime.now()
         val saved = orderRepository.save(order)
-        notificationService.sendOrderNotification(order.id, order.userId, "주문이 취소되었습니다.")
+        
+        // 실제 알림 서비스 호출 (비동기)
+        GlobalScope.launch {
+            try {
+                notificationClient.sendSlackNotification(
+                    order.userId,
+                    "주문이 취소되었습니다. 주문번호: ${order.id}"
+                )
+            } catch (e: Exception) {
+                println("알림 발송 실패: ${e.message}")
+            }
+        }
+        
         return toOrderResponse(saved)
     }
 

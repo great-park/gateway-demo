@@ -11,10 +11,16 @@ import java.time.LocalDateTime
 import shb.gpark.productservice.dto.ProductCreateRequest
 import shb.gpark.productservice.dto.ProductResponse
 import shb.gpark.productservice.model.Product
+import shb.gpark.productservice.model.Review
+import shb.gpark.productservice.repository.ReviewRepository
+import shb.gpark.productservice.dto.CreateReviewRequest
+import shb.gpark.productservice.dto.ReviewResponse
+import shb.gpark.productservice.dto.ProductDetailResponse
 
 @Service
 class ProductService(
-    private val productRepository: ProductRepository
+    private val productRepository: ProductRepository,
+    private val reviewRepository: ReviewRepository
 ) {
     
     fun createProduct(request: ProductCreateRequest): ProductResponse {
@@ -187,6 +193,54 @@ class ProductService(
             name = saved.name,
             price = saved.price,
             stock = saved.stock
+        )
+    }
+    
+    fun createReview(productId: Long, request: CreateReviewRequest): ReviewResponse {
+        val product = productRepository.findById(productId).orElseThrow { RuntimeException("존재하지 않는 상품입니다.") }
+        if (request.rating < 1 || request.rating > 5) throw RuntimeException("평점은 1-5점 사이여야 합니다.")
+        
+        val review = Review(
+            product = product,
+            userId = request.userId,
+            rating = request.rating,
+            content = request.content
+        )
+        val saved = reviewRepository.save(review)
+        return ReviewResponse(
+            id = saved.id,
+            productId = saved.product.id,
+            userId = saved.userId,
+            rating = saved.rating,
+            content = saved.content,
+            createdAt = saved.createdAt
+        )
+    }
+    
+    fun getProductDetail(productId: Long): ProductDetailResponse {
+        val product = productRepository.findById(productId).orElseThrow { RuntimeException("존재하지 않는 상품입니다.") }
+        val reviews = reviewRepository.findByProductId(productId)
+        val averageRating = reviewRepository.getAverageRatingByProductId(productId) ?: 0.0
+        val reviewCount = reviewRepository.getReviewCountByProductId(productId).toInt()
+        
+        return ProductDetailResponse(
+            id = product.id,
+            name = product.name,
+            price = product.price,
+            stock = product.stock,
+            isActive = product.isActive,
+            averageRating = averageRating,
+            reviewCount = reviewCount,
+            reviews = reviews.map {
+                ReviewResponse(
+                    id = it.id,
+                    productId = it.product.id,
+                    userId = it.userId,
+                    rating = it.rating,
+                    content = it.content,
+                    createdAt = it.createdAt
+                )
+            }
         )
     }
     
