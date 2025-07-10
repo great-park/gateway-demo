@@ -100,6 +100,31 @@ spring:
                 requestsPerMinute: 50
             - RewritePath=/user-service/health, /api/users/health
 
+        # 상품 관리 서비스 라우트 - JWT 인증 필요
+        - id: product-service-route
+          uri: http://localhost:8083
+          predicates:
+            - Path=/product-service/**
+          filters:
+            - name: JwtAuthFilter
+              args:
+                requiredRoles: ["USER"]
+            - name: RateLimitFilter
+              args:
+                requestsPerMinute: 25
+            - RewritePath=/product-service/(?<path>.*), /${path}
+
+        # 상품 서비스 헬스체크 - 인증 불필요
+        - id: product-service-health-route
+          uri: http://localhost:8083
+          predicates:
+            - Path=/product-service/health
+          filters:
+            - name: RateLimitFilter
+              args:
+                requestsPerMinute: 50
+            - RewritePath=/product-service/health, /actuator/health
+
       # 글로벌 필터 설정
       default-filters:
         - name: LoggingFilter
