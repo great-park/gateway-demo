@@ -4,6 +4,7 @@ import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import shb.gpark.productservice.dto.*
 import shb.gpark.productservice.entity.Product
+import shb.gpark.productservice.exception.*
 import shb.gpark.productservice.repository.ProductRepository
 import java.math.BigDecimal
 import java.time.LocalDateTime
@@ -15,6 +16,21 @@ class ProductService(
 ) {
     
     fun createProduct(request: CreateProductRequest): ProductResponse {
+        // 중복 상품명 검사
+        if (productRepository.findByNameContainingIgnoreCase(request.name).isNotEmpty()) {
+            throw ProductAlreadyExistsException(request.name)
+        }
+        
+        // 가격 검증
+        if (request.price <= BigDecimal.ZERO) {
+            throw InvalidPriceException(request.price.toString())
+        }
+        
+        // 재고 검증
+        if (request.stock < 0) {
+            throw InvalidStockException(request.stock)
+        }
+        
         val product = Product(
             name = request.name,
             description = request.description,
@@ -36,13 +52,31 @@ class ProductService(
     @Transactional(readOnly = true)
     fun getProductById(id: Long): ProductResponse {
         val product = productRepository.findById(id)
-            .orElseThrow { RuntimeException("상품을 찾을 수 없습니다. ID: $id") }
+            .orElseThrow { ProductNotFoundException(id) }
         return product.toResponse()
     }
     
     fun updateProduct(id: Long, request: UpdateProductRequest): ProductResponse {
         val product = productRepository.findById(id)
-            .orElseThrow { RuntimeException("상품을 찾을 수 없습니다. ID: $id") }
+            .orElseThrow { ProductNotFoundException(id) }
+        
+        // 상품명 변경 시 중복 검사
+        if (request.name != null && request.name != product.name) {
+            val existingProducts = productRepository.findByNameContainingIgnoreCase(request.name)
+            if (existingProducts.isNotEmpty()) {
+                throw ProductAlreadyExistsException(request.name)
+            }
+        }
+        
+        // 가격 검증
+        if (request.price != null && request.price <= BigDecimal.ZERO) {
+            throw InvalidPriceException(request.price.toString())
+        }
+        
+        // 재고 검증
+        if (request.stock != null && request.stock < 0) {
+            throw InvalidStockException(request.stock)
+        }
         
         val updatedProduct = product.copy(
             name = request.name ?: product.name,
@@ -61,17 +95,39 @@ class ProductService(
     
     fun deleteProduct(id: Long) {
         val product = productRepository.findById(id)
-            .orElseThrow { RuntimeException("상품을 찾을 수 없습니다. ID: $id") }
+            .orElseThrow { ProductNotFoundException(id) }
         
         productRepository.delete(product)
     }
     
     fun updateStock(id: Long, request: ProductStockUpdateRequest): ProductResponse {
         val product = productRepository.findById(id)
-            .orElseThrow { RuntimeException("상품을 찾을 수 없습니다. ID: $id") }
+            .orElseThrow { ProductNotFoundException(id) }
+        
+        // 재고 검증
+        if (request.stock < 0) {
+            throw InvalidStockException(request.stock)
+        }
         
         val updatedProduct = product.copy(
             stock = request.stock,
+            updatedAt = LocalDateTime.now()
+        )
+        
+        val savedProduct = productRepository.save(updatedProduct)
+        return savedProduct.toResponse()
+    }
+    
+    fun decreaseStock(id: Long, quantity: Int): ProductResponse {
+        val product = productRepository.findById(id)
+            .orElseThrow { ProductNotFoundException(id) }
+        
+        if (product.stock < quantity) {
+            throw InsufficientStockException(id, quantity, product.stock)
+        }
+        
+        val updatedProduct = product.copy(
+            stock = product.stock - quantity,
             updatedAt = LocalDateTime.now()
         )
         
@@ -105,12 +161,18 @@ class ProductService(
     
     @Transactional(readOnly = true)
     fun getProductsByPriceRange(minPrice: BigDecimal, maxPrice: BigDecimal): List<ProductResponse> {
+        if (minPrice > maxPrice) {
+            throw InvalidProductDataException("최소 가격이 최대 가격보다 클 수 없습니다.")
+        }
         return productRepository.findByPriceBetween(minPrice, maxPrice)
             .map { it.toResponse() }
     }
     
     @Transactional(readOnly = true)
     fun getLowStockProducts(threshold: Int = 10): List<ProductResponse> {
+        if (threshold < 0) {
+            throw InvalidStockException(threshold)
+        }
         return productRepository.findByStockLessThanAndIsActive(threshold, true)
             .map { it.toResponse() }
     }
