@@ -56,4 +56,10 @@ class OrderController(
         @PathVariable orderId: Long,
         @RequestBody request: UpdateOrderStatusRequest
     ) = orderService.updateOrderStatus(orderId, request)
+
+    @PostMapping("/api/orders/{orderId}/confirm")
+    fun confirmOrder(@PathVariable orderId: Long) = orderService.confirmOrder(orderId)
+
+    @PostMapping("/api/orders/{orderId}/cancel")
+    fun cancelOrder(@PathVariable orderId: Long) = orderService.cancelOrder(orderId)
 } 

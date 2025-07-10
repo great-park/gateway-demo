@@ -149,4 +149,28 @@ class ProductController(
             data = products
         ))
     }
+
+    @GetMapping("/api/products/{id}")
+    fun getProductDetail(@PathVariable id: Long): ResponseEntity<ProductResponse> {
+        val product = productService.getProduct(id)
+        return ResponseEntity.ok(product)
+    }
+
+    @PostMapping("/api/products/{id}/restock")
+    fun restockProduct(@PathVariable id: Long, @RequestParam amount: Int): ResponseEntity<ProductResponse> {
+        val product = productService.restockProduct(id, amount)
+        return ResponseEntity.ok(product)
+    }
+
+    @PostMapping("/api/products/{id}/activate")
+    fun activateProduct(@PathVariable id: Long): ResponseEntity<ProductResponse> {
+        val product = productService.setProductActive(id, true)
+        return ResponseEntity.ok(product)
+    }
+
+    @PostMapping("/api/products/{id}/deactivate")
+    fun deactivateProduct(@PathVariable id: Long): ResponseEntity<ProductResponse> {
+        val product = productService.setProductActive(id, false)
+        return ResponseEntity.ok(product)
+    }
 } 

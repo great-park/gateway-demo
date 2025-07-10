@@ -13,10 +13,34 @@ import org.springframework.data.domain.PageImpl
 import java.math.BigDecimal
 import java.time.LocalDateTime
 
+interface PaymentService {
+    fun processPayment(orderId: Long, amount: BigDecimal): Boolean
+}
+
+class MockPaymentService : PaymentService {
+    override fun processPayment(orderId: Long, amount: BigDecimal): Boolean {
+        // 실제 결제 연동 대신 항상 성공 처리
+        return true
+    }
+}
+
+interface NotificationService {
+    fun sendOrderNotification(orderId: Long, userId: Long, message: String)
+}
+
+class MockNotificationService : NotificationService {
+    override fun sendOrderNotification(orderId: Long, userId: Long, message: String) {
+        // 실제 알림 연동 대신 로그 출력
+        println("[알림] 주문 $orderId, 사용자 $userId: $message")
+    }
+}
+
 @Service
 class OrderService(
     private val orderRepository: OrderRepository,
-    private val productServiceClient: ProductServiceClient
+    private val productServiceClient: ProductServiceClient,
+    private val paymentService: PaymentService = MockPaymentService(),
+    private val notificationService: NotificationService = MockNotificationService()
 ) {
     @Transactional
     fun createOrder(request: CreateOrderRequest): OrderResponse {
@@ -90,6 +114,27 @@ class OrderService(
         order.status = request.status
         order.updatedAt = java.time.LocalDateTime.now()
         val saved = orderRepository.save(order)
+        return toOrderResponse(saved)
+    }
+
+    fun confirmOrder(orderId: Long): OrderResponse {
+        val order = orderRepository.findById(orderId).orElseThrow { RuntimeException("존재하지 않는 주문입니다.") }
+        if (order.status != OrderStatus.PENDING) throw RuntimeException("이미 처리된 주문입니다.")
+        val paymentResult = paymentService.processPayment(order.id, order.totalAmount)
+        if (!paymentResult) throw RuntimeException("결제 실패")
+        order.status = OrderStatus.CONFIRMED
+        order.updatedAt = java.time.LocalDateTime.now()
+        val saved = orderRepository.save(order)
+        notificationService.sendOrderNotification(order.id, order.userId, "주문이 확정되었습니다.")
+        return toOrderResponse(saved)
+    }
+    fun cancelOrder(orderId: Long): OrderResponse {
+        val order = orderRepository.findById(orderId).orElseThrow { RuntimeException("존재하지 않는 주문입니다.") }
+        if (order.status == OrderStatus.CANCELLED) throw RuntimeException("이미 취소된 주문입니다.")
+        order.status = OrderStatus.CANCELLED
+        order.updatedAt = java.time.LocalDateTime.now()
+        val saved = orderRepository.save(order)
+        notificationService.sendOrderNotification(order.id, order.userId, "주문이 취소되었습니다.")
         return toOrderResponse(saved)
     }
 

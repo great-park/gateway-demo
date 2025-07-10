@@ -10,5 +10,6 @@ data class Product(
     val id: Long = 0,
     val name: String,
     val price: BigDecimal,
-    var stock: Int
+    var stock: Int,
+    var isActive: Boolean = true
 ) 

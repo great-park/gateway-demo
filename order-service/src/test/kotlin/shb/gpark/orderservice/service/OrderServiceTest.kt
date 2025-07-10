@@ -86,4 +86,50 @@ class OrderServiceTest {
         assertEquals(orderId, result.id)
         assertEquals(order.userId, result.userId)
     }
+
+    @Test
+    fun `주문 확정 성공`() {
+        // given
+        val orderId = 2L
+        val order = Order(
+            id = orderId,
+            userId = 1L,
+            totalAmount = BigDecimal.TEN,
+            status = shb.gpark.orderservice.entity.OrderStatus.PENDING,
+            orderDate = java.time.LocalDateTime.now(),
+            updatedAt = java.time.LocalDateTime.now(),
+            notes = "확정 테스트"
+        )
+        `when`(orderRepository.findById(orderId)).thenReturn(java.util.Optional.of(order))
+        `when`(orderRepository.save(order)).thenReturn(order.copy(status = shb.gpark.orderservice.entity.OrderStatus.CONFIRMED))
+
+        // when
+        val result = orderService.confirmOrder(orderId)
+
+        // then
+        assertEquals(shb.gpark.orderservice.entity.OrderStatus.CONFIRMED, result.status)
+    }
+
+    @Test
+    fun `주문 취소 성공`() {
+        // given
+        val orderId = 3L
+        val order = Order(
+            id = orderId,
+            userId = 1L,
+            totalAmount = BigDecimal.TEN,
+            status = shb.gpark.orderservice.entity.OrderStatus.PENDING,
+            orderDate = java.time.LocalDateTime.now(),
+            updatedAt = java.time.LocalDateTime.now(),
+            notes = "취소 테스트"
+        )
+        `when`(orderRepository.findById(orderId)).thenReturn(java.util.Optional.of(order))
+        `when`(orderRepository.save(order)).thenReturn(order.copy(status = shb.gpark.orderservice.entity.OrderStatus.CANCELLED))
+
+        // when
+        val result = orderService.cancelOrder(orderId)
+
+        // then
+        assertEquals(shb.gpark.orderservice.entity.OrderStatus.CANCELLED, result.status)
+    }
 } 

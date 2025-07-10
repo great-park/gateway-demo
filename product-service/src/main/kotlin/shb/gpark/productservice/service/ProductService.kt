@@ -158,6 +158,38 @@ class ProductService(
             .map { it.toResponse() }
     }
     
+    fun getProduct(id: Long): ProductResponse {
+        val product = productRepository.findById(id).orElseThrow { RuntimeException("존재하지 않는 상품입니다.") }
+        return ProductResponse(
+            id = product.id,
+            name = product.name,
+            price = product.price,
+            stock = product.stock
+        )
+    }
+    fun restockProduct(id: Long, amount: Int): ProductResponse {
+        val product = productRepository.findById(id).orElseThrow { RuntimeException("존재하지 않는 상품입니다.") }
+        product.stock += amount
+        val saved = productRepository.save(product)
+        return ProductResponse(
+            id = saved.id,
+            name = saved.name,
+            price = saved.price,
+            stock = saved.stock
+        )
+    }
+    fun setProductActive(id: Long, active: Boolean): ProductResponse {
+        val product = productRepository.findById(id).orElseThrow { RuntimeException("존재하지 않는 상품입니다.") }
+        product.isActive = active
+        val saved = productRepository.save(product)
+        return ProductResponse(
+            id = saved.id,
+            name = saved.name,
+            price = saved.price,
+            stock = saved.stock
+        )
+    }
+    
     private fun Product.toResponse(): ProductResponse {
         return ProductResponse(
             id = this.id!!,
