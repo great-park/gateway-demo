@@ -11,26 +11,27 @@ import reactor.core.publisher.Mono
 @Component
 class LoggingFilter : GlobalFilter, Ordered {
 
-    private val log = LoggerFactory.getLogger(javaClass);
+    private val log = LoggerFactory.getLogger(javaClass)
 
     override fun filter(
-        exchange: ServerWebExchange?,
-        chain: GatewayFilterChain?
-    ): Mono<Void?>? {
-        val request = exchange?.request
-        if (request != null) {
-            log.info(">>> REQUEST: [{} {}] from IP: {}", request.method, request.uri, request.remoteAddress)
-        }
+        exchange: ServerWebExchange,
+        chain: GatewayFilterChain
+    ): Mono<Void> {
+        val request = exchange.request
+        val method = request.method?.toString() ?: "UNKNOWN"
+        val uri = request.uri?.toString() ?: "UNKNOWN"
+        val remoteAddress = request.remoteAddress?.address?.hostAddress ?: "UNKNOWN"
+        
+        log.info(">>> REQUEST: [{} {}] from IP: {}", method, uri, remoteAddress)
 
-        return chain?.filter(exchange)?.doFinally {
-            val response = exchange?.response
-            log.info("<<< RESPONSE: [status: {}] for [{} {}]",
-                request?.method, request?.uri
-            )
+        return chain.filter(exchange).doFinally {
+            val response = exchange.response
+            val statusCode = response.statusCode?.value() ?: 0
+            log.info("<<< RESPONSE: [status: {}] for [{} {}]", statusCode, method, uri)
         }
     }
 
     override fun getOrder(): Int {
-        return -1 // 다른 필터보다 먼저 실행되도록
+        return Ordered.HIGHEST_PRECEDENCE
     }
 }

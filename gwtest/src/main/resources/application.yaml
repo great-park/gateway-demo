@@ -5,22 +5,110 @@ logging:
   level:
     org.springframework.cloud.gateway: DEBUG
     org.springframework.web.reactive: DEBUG
+    shb.gpark.gwtest: DEBUG
+
+jwt:
+  secret: "your-secret-key-here-make-it-long-and-secure-for-production-use-a-strong-secret-key"
+  expiration: 86400000 # 24시간
 
 spring:
   cloud:
     gateway:
       routes:
+        # 인증 API 라우트 - 인증 불필요
+        - id: auth-route
+          uri: http://localhost:8080
+          predicates:
+            - Path=/auth/**
+          filters:
+            - name: RateLimitFilter
+              args:
+                requestsPerMinute: 30
+
+        # 보안 라우트 - JWT 인증 필요
         - id: secure-route
           uri: http://localhost:8081
           predicates:
             - Path=/secure/**
           filters:
-            - name: AuthFilter
+            - name: JwtAuthFilter
+              args:
+                requiredRoles: ["USER"]
+            - name: RateLimitFilter
+              args:
+                requestsPerMinute: 30
             - RewritePath=/secure/(?<path>.*), /${path}
 
-        - id: forward-to-web
+        # 공개 API 라우트 - 인증 불필요
+        - id: public-api-route
           uri: http://localhost:8081
           predicates:
             - Path=/app/**
           filters:
+            - name: RateLimitFilter
+              args:
+                requestsPerMinute: 60
             - RewritePath=/app/(?<path>.*), /${path}
+
+        # 사용자 API 라우트 - JWT 인증 필요
+        - id: user-api-route
+          uri: http://localhost:8081
+          predicates:
+            - Path=/api/users/**
+          filters:
+            - name: JwtAuthFilter
+              args:
+                requiredRoles: ["USER"]
+            - name: RateLimitFilter
+              args:
+                requestsPerMinute: 20
+            - RewritePath=/api/users/(?<path>.*), /api/users/${path}
+
+        # 상태 확인 라우트 - 인증 불필요
+        - id: status-route
+          uri: http://localhost:8081
+          predicates:
+            - Path=/api/status
+          filters:
+            - name: RateLimitFilter
+              args:
+                requestsPerMinute: 100
+            - RewritePath=/api/status, /api/status
+
+        # 사용자 관리 서비스 라우트 - JWT 인증 필요
+        - id: user-service-route
+          uri: http://localhost:8082
+          predicates:
+            - Path=/user-service/**
+          filters:
+            - name: JwtAuthFilter
+              args:
+                requiredRoles: ["USER"]
+            - name: RateLimitFilter
+              args:
+                requestsPerMinute: 15
+            - RewritePath=/user-service/(?<path>.*), /${path}
+
+        # 사용자 서비스 헬스체크 - 인증 불필요
+        - id: user-service-health-route
+          uri: http://localhost:8082
+          predicates:
+            - Path=/user-service/health
+          filters:
+            - name: RateLimitFilter
+              args:
+                requestsPerMinute: 50
+            - RewritePath=/user-service/health, /api/users/health
+
+      # 글로벌 필터 설정
+      default-filters:
+        - name: LoggingFilter
+
+      # CORS 설정
+      globalcors:
+        cors-configurations:
+          '[/**]':
+            allowedOrigins: "*"
+            allowedMethods: "*"
+            allowedHeaders: "*"
+            allowCredentials: true
