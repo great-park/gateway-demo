@@ -272,3 +272,32 @@ public
 # Temporary folders
 tmp/
 temp/
+
+# IDE
+.idea/
+*.iml
+
+# System files
+.DS_Store
+Thumbs.db
+
+# Temporary files
+~
+*.tmp
+*.swp
+*.swo
+
+# Build outputs
+build/
+.gradle/
+*.class
+*.jar
+*.war
+*.ear
+
+# Logs
+*.log
+
+# Cache
+*.cache
+
