@@ -1,0 +1,50 @@
+version: '3.8'
+
+services:
+  # API Gateway
+  gateway:
+    build: ./gwtest
+    ports:
+      - "8080:8080"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+    depends_on:
+      - backend
+      - user-service
+      - product-service
+    networks:
+      - gateway-network
+
+  # Backend Service
+  backend:
+    build: ./webtestK
+    ports:
+      - "8081:8081"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+    networks:
+      - gateway-network
+
+  # User Service
+  user-service:
+    build: ./user-service
+    ports:
+      - "8082:8082"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+    networks:
+      - gateway-network
+
+  # Product Service
+  product-service:
+    build: ./product-service
+    ports:
+      - "8083:8083"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+    networks:
+      - gateway-network
+
+networks:
+  gateway-network:
+    driver: bridge 
