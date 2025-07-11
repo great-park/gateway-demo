@@ -12,9 +12,9 @@ import shb.gpark.notificationservice.dto.NotificationType
 import org.slf4j.LoggerFactory
 
 @Service
-class NotificationService {
-    @Autowired
-    lateinit var mailSender: JavaMailSender
+class NotificationService(
+    private val mailSender: JavaMailSender
+) {
     private val logger = LoggerFactory.getLogger(NotificationService::class.java)
 
     fun sendNotification(request: NotificationRequest): NotificationResponse {
@@ -24,7 +24,7 @@ class NotificationService {
         }
     }
 
-    private fun sendEmail(request: NotificationRequest): NotificationResponse {
+    fun sendEmail(request: NotificationRequest): NotificationResponse {
         return try {
             val message = mailSender.createMimeMessage()
             val helper = MimeMessageHelper(message, false, "UTF-8")
@@ -40,7 +40,7 @@ class NotificationService {
         }
     }
 
-    private fun sendSlack(request: NotificationRequest): NotificationResponse {
+    fun sendSlack(request: NotificationRequest): NotificationResponse {
         return try {
             val webhookUrl = System.getenv("SLACK_WEBHOOK_URL") ?: ""
             if (webhookUrl.isBlank()) {

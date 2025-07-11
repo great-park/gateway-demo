@@ -19,8 +19,7 @@ class NotificationServiceTest {
     @BeforeEach
     fun setUp() {
         mailSender = mockk(relaxed = true)
-        service = NotificationService()
-        service.mailSender = mailSender
+        service = NotificationService(mailSender)
     }
 
     @Test
@@ -40,8 +39,7 @@ class NotificationServiceTest {
     fun `이메일 알림 실패 - 메일 서버 오류`() {
         val failMailSender = mockk<JavaMailSender>()
         every { failMailSender.createMimeMessage() } throws RuntimeException("메일 서버 오류")
-        val failService = NotificationService()
-        failService.mailSender = failMailSender
+        val failService = NotificationService(failMailSender)
         val request = NotificationRequest(
             type = NotificationType.EMAIL,
             to = "fail@example.com",
@@ -59,8 +57,7 @@ class NotificationServiceTest {
         val mockMessage = mockk<MimeMessage>()
         every { failMailSender.createMimeMessage() } returns mockMessage
         every { failMailSender.send(any<MimeMessage>()) } throws RuntimeException("전송 실패")
-        val failService = NotificationService()
-        failService.mailSender = failMailSender
+        val failService = NotificationService(failMailSender)
         val request = NotificationRequest(
             type = NotificationType.EMAIL,
             to = "fail@example.com",

@@ -3,8 +3,7 @@ package shb.gpark.notificationservice.controller
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureWebMvc
-import org.springframework.boot.test.context.SpringBootTest
+import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest
 import org.springframework.boot.test.mock.mockito.MockBean
 import org.springframework.http.MediaType
 import org.springframework.mail.javamail.JavaMailSender
@@ -15,10 +14,15 @@ import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.*
 import shb.gpark.notificationservice.dto.NotificationRequest
 import shb.gpark.notificationservice.dto.NotificationType
+import shb.gpark.notificationservice.dto.NotificationResponse
+import shb.gpark.notificationservice.service.NotificationService
+import org.mockito.Mockito.`when`
 
-@SpringBootTest(classes = [shb.gpark.notificationservice.NotificationServiceApplication::class])
-@AutoConfigureWebMvc
-@TestPropertySource(properties = ["SLACK_WEBHOOK_URL="])
+@WebMvcTest(NotificationController::class)
+@TestPropertySource(properties = [
+    "SLACK_WEBHOOK_URL=",
+    "management.health.mail.enabled=false"
+])
 class NotificationControllerIntegrationTest {
     @Autowired
     private lateinit var mockMvc: MockMvc
@@ -27,7 +31,7 @@ class NotificationControllerIntegrationTest {
     private lateinit var objectMapper: ObjectMapper
 
     @MockBean
-    private lateinit var mailSender: JavaMailSender
+    private lateinit var notificationService: NotificationService
 
     @Test
     fun `이메일 알림 전송 API 테스트`() {
@@ -37,6 +41,10 @@ class NotificationControllerIntegrationTest {
             subject = "테스트 제목",
             message = "테스트 내용"
         )
+        
+        `when`(notificationService.sendNotification(request))
+            .thenReturn(NotificationResponse(true, "이메일 발송 성공"))
+        
         mockMvc.perform(
             post("/api/notifications")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -55,6 +63,10 @@ class NotificationControllerIntegrationTest {
             subject = "슬랙 제목",
             message = "슬랙 내용"
         )
+        
+        `when`(notificationService.sendNotification(request))
+            .thenReturn(NotificationResponse(false, "슬랙 Webhook URL이 설정되지 않았습니다."))
+        
         mockMvc.perform(
             post("/api/notifications")
                 .contentType(MediaType.APPLICATION_JSON)
