@@ -16,6 +16,7 @@ import shb.gpark.orderservice.service.PaymentClient
 import shb.gpark.orderservice.service.NotificationClient
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 
 interface PaymentService {
     fun processPayment(orderId: Long, amount: BigDecimal): Boolean
@@ -46,6 +47,28 @@ class OrderService(
     private val paymentClient: PaymentClient,
     private val notificationClient: NotificationClient
 ) {
+    fun toOrderResponse(order: Order): OrderResponse {
+        return OrderResponse(
+            id = order.id,
+            userId = order.userId,
+            status = order.status,
+            totalAmount = order.totalAmount,
+            orderDate = order.orderDate,
+            updatedAt = order.updatedAt,
+            items = order.orderItems.map {
+                OrderItemResponse(
+                    id = it.id ?: 0L,
+                    productId = it.productId,
+                    productName = it.productName,
+                    quantity = it.quantity,
+                    unitPrice = it.unitPrice,
+                    totalPrice = it.totalPrice
+                )
+            },
+            notes = order.notes
+        )
+    }
+
     @Transactional
     fun createOrder(request: CreateOrderRequest): OrderResponse {
         // 상품 정보 조회 및 재고 확인
@@ -80,7 +103,7 @@ class OrderService(
         orderItems.forEach { item ->
             productServiceClient.updateStock(item.productId, -item.quantity).block()
         }
-        return saved.toOrderResponse()
+        return toOrderResponse(saved)
     }
 
     fun getOrder(orderId: Long): OrderResponse {
@@ -121,11 +144,11 @@ class OrderService(
         return toOrderResponse(saved)
     }
 
-    fun confirmOrder(orderId: Long): OrderResponse {
+    suspend fun confirmOrder(orderId: Long): OrderResponse {
         val order = orderRepository.findById(orderId).orElseThrow { RuntimeException("존재하지 않는 주문입니다.") }
         if (order.status != OrderStatus.PENDING) throw RuntimeException("이미 처리된 주문입니다.")
         
-        // 실제 결제 서비스 호출
+        // 실제 결제 서비스 호출 (동기)
         val paymentResponse = paymentClient.processPayment(
             PaymentRequest(
                 orderId = order.id,
@@ -141,21 +164,19 @@ class OrderService(
         val saved = orderRepository.save(order)
         
         // 실제 알림 서비스 호출 (비동기)
-        GlobalScope.launch {
-            try {
-                notificationClient.sendEmailNotification(
-                    order.userId,
-                    "주문 확정",
-                    "주문이 성공적으로 확정되었습니다. 주문번호: ${order.id}"
-                )
-            } catch (e: Exception) {
-                println("알림 발송 실패: ${e.message}")
-            }
+        try {
+            notificationClient.sendEmailNotification(
+                order.userId,
+                "주문 확정",
+                "주문이 성공적으로 확정되었습니다. 주문번호: ${order.id}"
+            )
+        } catch (e: Exception) {
+            println("알림 발송 실패: ${e.message}")
         }
         
         return toOrderResponse(saved)
     }
-    fun cancelOrder(orderId: Long): OrderResponse {
+    suspend fun cancelOrder(orderId: Long): OrderResponse {
         val order = orderRepository.findById(orderId).orElseThrow { RuntimeException("존재하지 않는 주문입니다.") }
         if (order.status == OrderStatus.CANCELLED) throw RuntimeException("이미 취소된 주문입니다.")
         
@@ -164,41 +185,18 @@ class OrderService(
         val saved = orderRepository.save(order)
         
         // 실제 알림 서비스 호출 (비동기)
-        GlobalScope.launch {
-            try {
-                notificationClient.sendSlackNotification(
-                    order.userId,
-                    "주문이 취소되었습니다. 주문번호: ${order.id}"
-                )
-            } catch (e: Exception) {
-                println("알림 발송 실패: ${e.message}")
-            }
+        try {
+            notificationClient.sendSlackNotification(
+                order.userId,
+                "주문이 취소되었습니다. 주문번호: ${order.id}"
+            )
+        } catch (e: Exception) {
+            println("알림 발송 실패: ${e.message}")
         }
         
         return toOrderResponse(saved)
     }
-
-    fun toOrderResponse(order: Order): OrderResponse {
-        return OrderResponse(
-            id = order.id,
-            userId = order.userId,
-            status = order.status,
-            totalAmount = order.totalAmount,
-            orderDate = order.orderDate,
-            updatedAt = order.updatedAt,
-            items = order.orderItems.map {
-                OrderItemResponse(
-                    id = it.id,
-                    productId = it.productId,
-                    productName = it.productName,
-                    quantity = it.quantity,
-                    unitPrice = it.unitPrice,
-                    totalPrice = it.totalPrice
-                )
-            },
-            notes = order.notes
-        )
-    }
+    
     private fun OrderItem.toOrderItemResponse(): OrderItemResponse {
         return OrderItemResponse(
             id = this.id!!,

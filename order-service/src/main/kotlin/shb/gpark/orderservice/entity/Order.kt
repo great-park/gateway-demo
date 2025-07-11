@@ -11,7 +11,7 @@ import java.time.LocalDateTime
 data class Order(
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    val id: Long? = null,
+    val id: Long = 0,
     
     @field:NotNull(message = "사용자 ID는 필수입니다")
     @Column(nullable = false)
@@ -20,7 +20,7 @@ data class Order(
     @field:NotNull(message = "주문 상태는 필수입니다")
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    val status: OrderStatus = OrderStatus.PENDING,
+    var status: OrderStatus,
     
     @field:Positive(message = "총 금액은 0보다 커야 합니다")
     @Column(nullable = false, precision = 10, scale = 2)
@@ -30,7 +30,7 @@ data class Order(
     val orderDate: LocalDateTime = LocalDateTime.now(),
     
     @Column(nullable = false)
-    val updatedAt: LocalDateTime = LocalDateTime.now(),
+    var updatedAt: LocalDateTime = LocalDateTime.now(),
     
     @OneToMany(mappedBy = "order", cascade = [CascadeType.ALL], fetch = FetchType.LAZY)
     val orderItems: MutableList<OrderItem> = mutableListOf(),
@@ -38,7 +38,7 @@ data class Order(
     @Column(length = 500)
     val notes: String? = null
 ) {
-    constructor() : this(null, 0L, OrderStatus.PENDING, BigDecimal.ZERO, LocalDateTime.now(), LocalDateTime.now(), mutableListOf(), null)
+    constructor() : this(0L, 0L, OrderStatus.PENDING, BigDecimal.ZERO, LocalDateTime.now(), LocalDateTime.now(), mutableListOf(), null)
 }
 
 enum class OrderStatus {

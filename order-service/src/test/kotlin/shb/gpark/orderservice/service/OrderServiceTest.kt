@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test
 import org.mockito.Mockito.mock
 import org.mockito.Mockito.any
 import org.mockito.Mockito.`when`
+import org.mockito.Mockito.doReturn
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.test.mock.mockito.MockBean
 import org.springframework.beans.factory.annotation.Autowired
@@ -18,6 +19,11 @@ import shb.gpark.orderservice.service.NotificationClient
 import shb.gpark.orderservice.service.PaymentRequest
 import shb.gpark.orderservice.service.PaymentResponse
 import shb.gpark.orderservice.service.NotificationResponse
+import kotlinx.coroutines.runBlocking
+import io.mockk.coEvery
+import io.mockk.mockk
+import org.junit.jupiter.api.BeforeEach
+import io.mockk.coVerify
 
 @SpringBootTest
 class OrderServiceTest {
@@ -27,11 +33,15 @@ class OrderServiceTest {
     @MockBean
     lateinit var orderRepository: OrderRepository
 
-    @MockBean
     lateinit var paymentClient: PaymentClient
 
     @MockBean
     lateinit var notificationClient: NotificationClient
+
+    @BeforeEach
+    fun setUp() {
+        paymentClient = mockk()
+    }
 
     @Test
     fun `주문 생성 성공`() {
@@ -115,7 +125,7 @@ class OrderServiceTest {
         `when`(orderRepository.save(order)).thenReturn(order.copy(status = shb.gpark.orderservice.entity.OrderStatus.CONFIRMED))
 
         // when
-        val result = orderService.confirmOrder(orderId)
+        val result = runBlocking { orderService.confirmOrder(orderId) }
 
         // then
         assertEquals(shb.gpark.orderservice.entity.OrderStatus.CONFIRMED, result.status)
@@ -138,7 +148,7 @@ class OrderServiceTest {
         `when`(orderRepository.save(order)).thenReturn(order.copy(status = shb.gpark.orderservice.entity.OrderStatus.CANCELLED))
 
         // when
-        val result = orderService.cancelOrder(orderId)
+        val result = runBlocking { orderService.cancelOrder(orderId) }
 
         // then
         assertEquals(shb.gpark.orderservice.entity.OrderStatus.CANCELLED, result.status)
@@ -161,15 +171,15 @@ class OrderServiceTest {
         val notificationResponse = NotificationResponse(true, "알림 발송 성공")
         
         `when`(orderRepository.findById(orderId)).thenReturn(java.util.Optional.of(order))
-        `when`(paymentClient.processPayment(any())).thenReturn(paymentResponse)
+        coEvery { paymentClient.processPayment(any()) } returns paymentResponse
         `when`(orderRepository.save(order)).thenReturn(order.copy(status = shb.gpark.orderservice.entity.OrderStatus.CONFIRMED))
 
         // when
-        val result = orderService.confirmOrder(orderId)
+        val result = runBlocking { orderService.confirmOrder(orderId) }
 
         // then
         assertEquals(shb.gpark.orderservice.entity.OrderStatus.CONFIRMED, result.status)
-        org.mockito.Mockito.verify(paymentClient).processPayment(any())
+        coVerify { paymentClient.processPayment(any()) }
     }
 
     @Test
@@ -188,11 +198,11 @@ class OrderServiceTest {
         val paymentResponse = PaymentResponse(false, null, "잔액 부족")
         
         `when`(orderRepository.findById(orderId)).thenReturn(java.util.Optional.of(order))
-        `when`(paymentClient.processPayment(any())).thenReturn(paymentResponse)
+        coEvery { paymentClient.processPayment(any()) } returns paymentResponse
 
         // when & then
         val exception = org.junit.jupiter.api.assertThrows<RuntimeException> {
-            orderService.confirmOrder(orderId)
+            runBlocking { orderService.confirmOrder(orderId) }
         }
         assertTrue(exception.message!!.contains("결제 실패"))
     }
@@ -215,7 +225,7 @@ class OrderServiceTest {
         `when`(orderRepository.save(order)).thenReturn(order.copy(status = shb.gpark.orderservice.entity.OrderStatus.CANCELLED))
 
         // when
-        val result = orderService.cancelOrder(orderId)
+        val result = runBlocking { orderService.cancelOrder(orderId) }
 
         // then
         assertEquals(shb.gpark.orderservice.entity.OrderStatus.CANCELLED, result.status)
