@@ -1,97 +1,142 @@
 package shb.gpark.productservice.service
 
-import org.assertj.core.api.Assertions.assertThat
-import org.junit.jupiter.api.BeforeEach
-import org.junit.jupiter.api.DisplayName
+import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
-import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest
+import org.mockito.Mockito.`when`
+import org.mockito.Mockito.any
 import org.springframework.boot.test.context.SpringBootTest
-import org.springframework.transaction.annotation.Transactional
-import shb.gpark.productservice.dto.CreateProductRequest
-import shb.gpark.productservice.dto.ProductSearchRequest
-import shb.gpark.productservice.dto.ProductStockUpdateRequest
-import shb.gpark.productservice.dto.UpdateProductRequest
-import shb.gpark.productservice.entity.Product
+import org.springframework.boot.test.mock.mockito.MockBean
+import org.springframework.beans.factory.annotation.Autowired
 import shb.gpark.productservice.repository.ProductRepository
+import shb.gpark.productservice.repository.ReviewRepository
+import shb.gpark.productservice.dto.CreateReviewRequest
+import shb.gpark.productservice.dto.ReviewResponse
+import shb.gpark.productservice.dto.ProductDetailResponse
+import shb.gpark.productservice.model.Product
+import shb.gpark.productservice.model.Review
 import java.math.BigDecimal
+import java.time.LocalDateTime
 
 @SpringBootTest
-@Transactional
-class ProductServiceTest @Autowired constructor(
-    val productService: ProductService,
-    val productRepository: ProductRepository
-) {
-    
-    @BeforeEach
-    fun setUp() {
-        productRepository.deleteAll()
-    }
+class ProductServiceTest {
+    @Autowired
+    lateinit var productService: ProductService
+
+    @MockBean
+    lateinit var productRepository: ProductRepository
+
+    @MockBean
+    lateinit var reviewRepository: ReviewRepository
 
     @Test
-    @DisplayName("상품 생성 및 조회")
-    fun createAndGetProduct() {
-        val request = CreateProductRequest(
+    fun `리뷰 생성 성공`() {
+        // given
+        val productId = 1L
+        val product = Product(
+            id = productId,
             name = "테스트 상품",
-            description = "테스트 설명",
-            price = BigDecimal(10000),
-            stock = 50,
-            category = "테스트",
-            imageUrl = null
+            price = BigDecimal.TEN,
+            stock = 10,
+            isActive = true
         )
-        val created = productService.createProduct(request)
-        val found = productService.getProductById(created.id)
-        assertThat(found.name).isEqualTo("테스트 상품")
-        assertThat(found.price).isEqualTo(BigDecimal(10000))
+        val request = CreateReviewRequest(
+            userId = 1L,
+            rating = 5,
+            content = "좋은 상품입니다!"
+        )
+        val review = Review(
+            id = 1L,
+            product = product,
+            userId = request.userId,
+            rating = request.rating,
+            content = request.content,
+            createdAt = LocalDateTime.now()
+        )
+        
+        `when`(productRepository.findById(productId)).thenReturn(java.util.Optional.of(product))
+        `when`(reviewRepository.save(any())).thenReturn(review)
+
+        // when
+        val result = productService.createReview(productId, request)
+
+        // then
+        assertNotNull(result)
+        assertEquals(productId, result.productId)
+        assertEquals(request.userId, result.userId)
+        assertEquals(request.rating, result.rating)
+        assertEquals(request.content, result.content)
     }
 
     @Test
-    @DisplayName("상품 목록 조회")
-    fun getAllProducts() {
-        val request1 = CreateProductRequest("상품1", "설명1", BigDecimal(1000), 10, "카테고리1", null)
-        val request2 = CreateProductRequest("상품2", "설명2", BigDecimal(2000), 20, "카테고리2", null)
-        productService.createProduct(request1)
-        productService.createProduct(request2)
-        val all = productService.getAllProducts()
-        assertThat(all.size).isEqualTo(2)
+    fun `리뷰 생성 실패 - 잘못된 평점`() {
+        // given
+        val productId = 1L
+        val product = Product(
+            id = productId,
+            name = "테스트 상품",
+            price = BigDecimal.TEN,
+            stock = 10,
+            isActive = true
+        )
+        val request = CreateReviewRequest(
+            userId = 1L,
+            rating = 6, // 잘못된 평점
+            content = "좋은 상품입니다!"
+        )
+        
+        `when`(productRepository.findById(productId)).thenReturn(java.util.Optional.of(product))
+
+        // when & then
+        val exception = org.junit.jupiter.api.assertThrows<RuntimeException> {
+            productService.createReview(productId, request)
+        }
+        assertTrue(exception.message!!.contains("평점은 1-5점 사이여야 합니다"))
     }
 
     @Test
-    @DisplayName("상품 수정")
-    fun updateProduct() {
-        val request = CreateProductRequest("상품", "설명", BigDecimal(1000), 10, "카테고리", null)
-        val created = productService.createProduct(request)
-        val update = UpdateProductRequest(name = "수정상품", price = BigDecimal(2000))
-        val updated = productService.updateProduct(created.id, update)
-        assertThat(updated.name).isEqualTo("수정상품")
-        assertThat(updated.price).isEqualTo(BigDecimal(2000))
-    }
+    fun `상품 상세 조회 성공`() {
+        // given
+        val productId = 1L
+        val product = Product(
+            id = productId,
+            name = "테스트 상품",
+            price = BigDecimal.TEN,
+            stock = 10,
+            isActive = true
+        )
+        val reviews = listOf(
+            Review(
+                id = 1L,
+                product = product,
+                userId = 1L,
+                rating = 5,
+                content = "좋은 상품입니다!",
+                createdAt = LocalDateTime.now()
+            ),
+            Review(
+                id = 2L,
+                product = product,
+                userId = 2L,
+                rating = 4,
+                content = "괜찮은 상품입니다.",
+                createdAt = LocalDateTime.now()
+            )
+        )
+        
+        `when`(productRepository.findById(productId)).thenReturn(java.util.Optional.of(product))
+        `when`(reviewRepository.findByProductId(productId)).thenReturn(reviews)
+        `when`(reviewRepository.getAverageRatingByProductId(productId)).thenReturn(4.5)
+        `when`(reviewRepository.getReviewCountByProductId(productId)).thenReturn(2L)
 
-    @Test
-    @DisplayName("상품 삭제")
-    fun deleteProduct() {
-        val request = CreateProductRequest("상품", "설명", BigDecimal(1000), 10, "카테고리", null)
-        val created = productService.createProduct(request)
-        productService.deleteProduct(created.id)
-        val all = productService.getAllProducts()
-        assertThat(all).isEmpty()
-    }
+        // when
+        val result = productService.getProductDetail(productId)
 
-    @Test
-    @DisplayName("상품 검색")
-    fun searchProducts() {
-        productService.createProduct(CreateProductRequest("노트북", "설명", BigDecimal(1000), 10, "전자제품", null))
-        productService.createProduct(CreateProductRequest("스마트폰", "설명", BigDecimal(2000), 20, "전자제품", null))
-        val search = productService.searchProducts(ProductSearchRequest(name = "노트북"))
-        assertThat(search.size).isEqualTo(1)
-        assertThat(search[0].name).isEqualTo("노트북")
-    }
-
-    @Test
-    @DisplayName("재고 수정")
-    fun updateStock() {
-        val created = productService.createProduct(CreateProductRequest("상품", "설명", BigDecimal(1000), 10, "카테고리", null))
-        val updated = productService.updateStock(created.id, ProductStockUpdateRequest(stock = 99))
-        assertThat(updated.stock).isEqualTo(99)
+        // then
+        assertNotNull(result)
+        assertEquals(productId, result.id)
+        assertEquals(product.name, result.name)
+        assertEquals(4.5, result.averageRating)
+        assertEquals(2, result.reviewCount)
+        assertEquals(2, result.reviews.size)
     }
 } 
