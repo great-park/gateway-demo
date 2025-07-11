@@ -1,0 +1,22 @@
+server:
+  port: 8084
+
+spring:
+  application:
+    name: notification-service
+  mail:
+    host: smtp.example.com
+    port: 587
+    username: user@example.com
+    password: password
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+
+logging:
+  level:
+    shb.gpark.notificationservice: DEBUG
+    org.springframework.web: DEBUG 
