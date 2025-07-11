@@ -1,0 +1,17 @@
+spring:
+  datasource:
+    url: jdbc:mysql://prod-db-host:3306/paymentdb
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    username: prod_user
+    password: prod_password
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: false
+logging:
+  level:
+    shb.gpark.paymentservice: INFO
+    org.springframework.web: WARN 
